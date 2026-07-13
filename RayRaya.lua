@@ -1,68 +1,51 @@
 -- =====================================================
--- إضافة أزرار حماية البوتات (أحمر / أزرق)
+-- إضافة واجهة حماية البوتات (فوق السكريبت الأصلي)
 -- =====================================================
 
--- إضافة Frame للأزرار جنب قائمة اللاعبين (مش فوقها)
-local botProtectionFrame = Instance.new("Frame")
-botProtectionFrame.Size = UDim2.new(0.9, 0, 0, 30)
-botProtectionFrame.Position = UDim2.new(0.05, 0, 1, -40) -- تحت القائمة مباشرة
-botProtectionFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-botProtectionFrame.Parent = playerFrame
-Instance.new("UICorner", botProtectionFrame).CornerRadius = UDim.new(0, 6)
+-- إنشاء ScreenGui منفصل للبوتات
+local botGui = Instance.new("ScreenGui")
+botGui.Name = "BotProtectionUI"
+botGui.Parent = LocalPlayer.PlayerGui
+botGui.ResetOnSpawn = false
 
--- زر أحمر
-local redBtn = Instance.new("TextButton")
-redBtn.Size = UDim2.new(0.4, 0, 0, 22)
-redBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
-redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-redBtn.Text = "🔴 Red"
-redBtn.TextColor3 = Color3.new(1, 1, 1)
-redBtn.Font = Enum.Font.GothamBold
-redBtn.TextSize = 11
-redBtn.Parent = botProtectionFrame
-Instance.new("UICorner", redBtn).CornerRadius = UDim.new(0, 6)
+-- الإطار الرئيسي (مربع صغير)
+local botFrame = Instance.new("Frame")
+botFrame.Size = UDim2.new(0, 120, 0, 60)
+botFrame.Position = UDim2.new(0.8, -140, 0.5, -30)
+botFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+botFrame.BackgroundTransparency = 0.2
+botFrame.BorderSizePixel = 0
+botFrame.Parent = botGui
+Instance.new("UICorner", botFrame).CornerRadius = UDim.new(0, 10)
 
--- زر أزرق
-local blueBtn = Instance.new("TextButton")
-blueBtn.Size = UDim2.new(0.4, 0, 0, 22)
-blueBtn.Position = UDim2.new(0.55, 0, 0.1, 0)
-blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-blueBtn.Text = "🔵 Blue"
-blueBtn.TextColor3 = Color3.new(1, 1, 1)
-blueBtn.Font = Enum.Font.GothamBold
-blueBtn.TextSize = 11
-blueBtn.Parent = botProtectionFrame
-Instance.new("UICorner", blueBtn).CornerRadius = UDim.new(0, 6)
+-- زر الفريق الأحمر
+local redTeamBtn = Instance.new("TextButton")
+redTeamBtn.Size = UDim2.new(0, 45, 0, 25)
+redTeamBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
+redTeamBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+redTeamBtn.Text = "🔴"
+redTeamBtn.TextColor3 = Color3.new(1, 1, 1)
+redTeamBtn.Font = Enum.Font.GothamBold
+redTeamBtn.TextSize = 14
+redTeamBtn.Parent = botFrame
+Instance.new("UICorner", redTeamBtn).CornerRadius = UDim.new(0, 6)
 
--- ==================== متغيرات الحماية ====================
+-- زر الفريق الأزرق
+local blueTeamBtn = Instance.new("TextButton")
+blueTeamBtn.Size = UDim2.new(0, 45, 0, 25)
+blueTeamBtn.Position = UDim2.new(0.55, 0, 0.1, 0)
+blueTeamBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
+blueTeamBtn.Text = "🔵"
+blueTeamBtn.TextColor3 = Color3.new(1, 1, 1)
+blueTeamBtn.Font = Enum.Font.GothamBold
+blueTeamBtn.TextSize = 14
+blueTeamBtn.Parent = botFrame
+Instance.new("UICorner", blueTeamBtn).CornerRadius = UDim.new(0, 6)
+
+-- ==================== منطق الحماية ====================
 local botProtectionMode = "None" -- "Red", "Blue", "None"
 
--- ==================== وظيفة الأزرار ====================
-redBtn.MouseButton1Click:Connect(function()
-    if botProtectionMode == "Red" then
-        botProtectionMode = "None"
-        redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-    else
-        botProtectionMode = "Red"
-        redBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-        print("🛡 Protecting Red bots")
-    end
-end)
-
-blueBtn.MouseButton1Click:Connect(function()
-    if botProtectionMode == "Blue" then
-        botProtectionMode = "None"
-        blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-    else
-        botProtectionMode = "Blue"
-        blueBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        print("🛡 Protecting Blue bots")
-    end
-end)
-
--- ==================== التعرف على البوتات ====================
+-- التعرف على البوتات
 local function getBots()
     local bots = {}
     for _, obj in pairs(workspace.ActiveBots:GetChildren()) do
@@ -73,20 +56,17 @@ local function getBots()
     return bots
 end
 
--- ==================== معرفة لون البوت ====================
+-- معرفة لون البوت (من SpawnProtectionActive)
 local function getBotColor(bot)
-    local rootPart = bot:FindFirstChild("HumanoidRootPart")
-    if rootPart then
-        if rootPart.BrickColor == BrickColor.new("Bright red") or rootPart.BrickColor == BrickColor.new("Really red") then
-            return "Red"
-        elseif rootPart.BrickColor == BrickColor.new("Bright blue") or rootPart.BrickColor == BrickColor.new("Navy blue") then
-            return "Blue"
-        end
+    if workspace.SpawnProtectionActive:FindFirstChild("Red") and bot:IsDescendantOf(workspace.SpawnProtectionActive.Red) then
+        return "Red"
+    elseif workspace.SpawnProtectionActive:FindFirstChild("Blue") and bot:IsDescendantOf(workspace.SpawnProtectionActive.Blue) then
+        return "Blue"
     end
     return "Unknown"
 end
 
--- ==================== X-RAY للبوتات ====================
+-- X-Ray للبوتات
 local function applyBotXray(bot)
     if not bot then return end
     local highlight = bot:FindFirstChild("BotXray")
@@ -102,79 +82,105 @@ local function applyBotXray(bot)
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 end
 
--- ==================== تفعيل X-RAY ====================
+-- تفعيل X-Ray للبوتات
 local function initBotXray()
     for _, bot in pairs(getBots()) do
         applyBotXray(bot)
     end
 end
 
--- ==================== مراقبة البوتات الجديدة ====================
+-- مراقبة البوتات الجديدة
 workspace.ActiveBots.DescendantAdded:Connect(function(obj)
     if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
         applyBotXray(obj)
     end
 end)
 
+-- تشغيل X-Ray عند بدء السكريبت
 task.spawn(function()
     wait(1)
     initBotXray()
 end)
 
--- ==================== تعديل Aimbot ====================
-local function findClosestTargetWithProtection()
-    local bestTarget = nil
-    local bestDistance = math.huge
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    -- اللاعبين العاديين
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and not protectedPlayers[player] then
-            local character = player.Character
-            if character then
-                local targetPart = getTargetPart(character)
-                if targetPart then
-                    local hum = character:FindFirstChild("Humanoid")
-                    if hum and hum.Health > 0 then
-                        local onScreen, screenPos = isOnScreen(targetPart.Position)
-                        if onScreen then
-                            local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                            if distance < bestDistance then
-                                bestDistance = distance
-                                bestTarget = targetPart
-                            end
-                        end
-                    end
-                end
-            end
-        end
+-- وظائف الأزرار
+redTeamBtn.MouseButton1Click:Connect(function()
+    if botProtectionMode == "Red" then
+        botProtectionMode = "None"
+        redTeamBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    else
+        botProtectionMode = "Red"
+        redTeamBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        blueTeamBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
     end
+end)
 
-    -- البوتات
-    for _, bot in pairs(getBots()) do
+blueTeamBtn.MouseButton1Click:Connect(function()
+    if botProtectionMode == "Blue" then
+        botProtectionMode = "None"
+        blueTeamBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
+    else
+        botProtectionMode = "Blue"
+        blueTeamBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        redTeamBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    end
+end)
+
+-- ==================== تعديل دالة البحث عن الهدف في Aimbot ====================
+-- (نضيف استثناء البوتات المحمية في findClosestTarget و findVisibleTarget)
+local oldFindClosest = findClosestTarget
+local oldFindVisible = findVisibleTarget
+
+findClosestTarget = function()
+    local bestTarget = oldFindClosest()
+    -- إذا كان الهدف بوت محمي، نتجاهله
+    if bestTarget and bestTarget.Parent and bestTarget.Parent:IsA("Model") then
+        local bot = bestTarget.Parent
         local botColor = getBotColor(bot)
-        local isProtected = false
-        
-        if botProtectionMode == "Red" and botColor == "Red" then
-            isProtected = true
-        elseif botProtectionMode == "Blue" and botColor == "Blue" then
-            isProtected = true
-        end
-        
-        if not isProtected then
-            local targetPart = bot:FindFirstChild("HumanoidRootPart")
-            if targetPart then
-                local onScreen, screenPos = isOnScreen(targetPart.Position)
-                if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                    if distance < bestDistance then
-                        bestDistance = distance
-                        bestTarget = targetPart
-                    end
-                end
-            end
+        if (botProtectionMode == "Red" and botColor == "Red") or (botProtectionMode == "Blue" and botColor == "Blue") then
+            return nil
         end
     end
-    
     return bestTarget
 end
+
+findVisibleTarget = function()
+    local bestTarget = oldFindVisible()
+    if bestTarget and bestTarget.Parent and bestTarget.Parent:IsA("Model") then
+        local bot = bestTarget.Parent
+        local botColor = getBotColor(bot)
+        if (botProtectionMode == "Red" and botColor == "Red") or (botProtectionMode == "Blue" and botColor == "Blue") then
+            return nil
+        end
+    end
+    return bestTarget
+end
+
+-- ==================== جعل الواجهة قابلة للسحب ====================
+local function makeDraggable(frame)
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+end
+
+makeDraggable(botFrame)
