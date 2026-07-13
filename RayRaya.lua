@@ -1,5 +1,5 @@
 -- =====================================================
--- SHARP V21 - THE PREDATOR (SMART FREEZE) + TEAM PROTECTION
+-- SHARP V21 - THE PREDATOR (SMART FREEZE) + BOT PROTECTION
 -- =====================================================
 
 local Players = game:GetService("Players")
@@ -16,6 +16,7 @@ local pinActive = false
 local freezeLock = false
 local protectedPlayers = {}
 local currentTarget = nil
+local botProtectionActive = false
 
 -- ==================== X-RAY ====================
 local function applyXray(char)
@@ -365,6 +366,27 @@ hBtn.MouseButton1Click:Connect(function()
     btns.Visible = not uiHidden
 end)
 
+-- ==================== BOT DETECTION ====================
+local function getBotTargetPart(bot)
+    local head = bot:FindFirstChild("Head")
+    if head then return head end
+    return bot:FindFirstChild("HumanoidRootPart")
+end
+
+local function getBotHealth(bot)
+    local hum = bot:FindFirstChild("Humanoid")
+    if hum then return hum.Health end
+    return 100
+end
+
+local function isBotValid(bot)
+    if not bot then return false end
+    if botProtectionActive and protectedPlayers[bot.Name] then return false end
+    local health = getBotHealth(bot)
+    if health <= 0 then return false end
+    return true
+end
+
 -- ==================== Aimbot ====================
 
 local function getTargetPart(character)
@@ -414,6 +436,27 @@ local function findClosestTarget()
             end
         end
     end
+
+    -- البحث في البوتات
+    local activeBots = workspace:FindFirstChild("ActiveBots")
+    if activeBots then
+        for _, bot in pairs(activeBots:GetChildren()) do
+            if isBotValid(bot) then
+                local targetPart = getBotTargetPart(bot)
+                if targetPart then
+                    local onScreen, screenPos = isOnScreen(targetPart.Position)
+                    if onScreen then
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                        if distance < bestDistance then
+                            bestDistance = distance
+                            bestTarget = targetPart
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     return bestTarget
 end
 
@@ -444,6 +487,27 @@ local function findVisibleTarget()
             end
         end
     end
+
+    -- البحث في البوتات
+    local activeBots = workspace:FindFirstChild("ActiveBots")
+    if activeBots then
+        for _, bot in pairs(activeBots:GetChildren()) do
+            if isBotValid(bot) then
+                local targetPart = getBotTargetPart(bot)
+                if targetPart then
+                    local onScreen, screenPos = isOnScreen(targetPart.Position)
+                    if onScreen and isVisible(targetPart) then
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                        if distance < bestDistance then
+                            bestDistance = distance
+                            bestTarget = targetPart
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     return bestTarget
 end
 
@@ -493,116 +557,112 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- =====================================================
--- ADDED: TEAM PROTECTION PANEL (RED/BLUE)
+-- ADDED: BOT PROTECTION PANEL (ACTIVEBOTS)
 -- =====================================================
 
-local teamProtection = {
-    Red = false,
-    Blue = false
-}
-
-local teamGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-teamGui.Name = "TeamProtectionUI"
-teamGui.ResetOnSpawn = false
-
-local teamFrame = Instance.new("Frame", teamGui)
-teamFrame.Size = UDim2.new(0, 180, 0, 80)
-teamFrame.Position = UDim2.new(0.5, -90, 0.5, -40)
-teamFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-teamFrame.BackgroundTransparency = 0.5
-Instance.new("UICorner", teamFrame).CornerRadius = UDim.new(0, 12)
-local teamStroke = Instance.new("UIStroke", teamFrame)
-teamStroke.Thickness = 1
-teamStroke.Color = Color3.fromRGB(100, 100, 100)
-
-local teamTitle = Instance.new("TextLabel", teamFrame)
-teamTitle.Size = UDim2.new(1, 0, 0, 20)
-teamTitle.Text = "🛡 Team Shield"
-teamTitle.TextColor3 = Color3.new(1, 1, 1)
-teamTitle.Font = Enum.Font.GothamBold
-teamTitle.TextSize = 12
-teamTitle.BackgroundTransparency = 1
-
-local redBtn = Instance.new("TextButton", teamFrame)
-redBtn.Size = UDim2.new(0, 70, 0, 30)
-redBtn.Position = UDim2.new(0.05, 0, 0.4, 0)
-redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-redBtn.Text = "🔴 RED OFF"
-redBtn.TextColor3 = Color3.new(1, 1, 1)
-redBtn.Font = Enum.Font.GothamBold
-redBtn.TextSize = 11
-Instance.new("UICorner", redBtn).CornerRadius = UDim.new(0, 6)
-
-local blueBtn = Instance.new("TextButton", teamFrame)
-blueBtn.Size = UDim2.new(0, 70, 0, 30)
-blueBtn.Position = UDim2.new(0.5, 5, 0.4, 0)
-blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-blueBtn.Text = "🔵 BLUE OFF"
-blueBtn.TextColor3 = Color3.new(1, 1, 1)
-blueBtn.Font = Enum.Font.GothamBold
-blueBtn.TextSize = 11
-Instance.new("UICorner", blueBtn).CornerRadius = UDim.new(0, 6)
-
-local function updateTeamProtection(teamColor, enable)
-    local targetTeam = (teamColor == "Red") and Enum.Team.Red or Enum.Team.Blue
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Team == targetTeam then
-            if enable then
-                protectedPlayers[player] = true
-            else
-                protectedPlayers[player] = nil
+local function getAllBots()
+    local bots = {}
+    local activeBots = workspace:FindFirstChild("ActiveBots")
+    if activeBots then
+        for _, bot in pairs(activeBots:GetChildren()) do
+            if bot:FindFirstChild("Humanoid") or bot:FindFirstChild("HumanoidRootPart") then
+                table.insert(bots, bot)
             end
+        end
+    end
+    return bots
+end
+
+local function updateBotProtection(enable)
+    for _, bot in pairs(getAllBots()) do
+        local botName = bot.Name
+        if enable then
+            protectedPlayers[botName] = true
+        else
+            protectedPlayers[botName] = nil
         end
     end
 end
 
-redBtn.MouseButton1Click:Connect(function()
-    teamProtection.Red = not teamProtection.Red
-    redBtn.Text = teamProtection.Red and "🔴 RED ON" or "🔴 RED OFF"
-    redBtn.BackgroundColor3 = teamProtection.Red and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
-    updateTeamProtection("Red", teamProtection.Red)
+local botGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+botGui.Name = "BotProtectionUI"
+botGui.ResetOnSpawn = false
+
+local botFrame = Instance.new("Frame", botGui)
+botFrame.Size = UDim2.new(0, 160, 0, 60)
+botFrame.Position = UDim2.new(0.5, -80, 0.5, -30)
+botFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+botFrame.BackgroundTransparency = 0.5
+Instance.new("UICorner", botFrame).CornerRadius = UDim.new(0, 12)
+local botStroke = Instance.new("UIStroke", botFrame)
+botStroke.Thickness = 1
+botStroke.Color = Color3.fromRGB(100, 100, 100)
+
+local botTitle = Instance.new("TextLabel", botFrame)
+botTitle.Size = UDim2.new(1, 0, 0, 20)
+botTitle.Text = "🤖 Bot Shield"
+botTitle.TextColor3 = Color3.new(1, 1, 1)
+botTitle.Font = Enum.Font.GothamBold
+botTitle.TextSize = 12
+botTitle.BackgroundTransparency = 1
+
+local botBtn = Instance.new("TextButton", botFrame)
+botBtn.Size = UDim2.new(0, 120, 0, 25)
+botBtn.Position = UDim2.new(0.5, -60, 0.45, 0)
+botBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+botBtn.Text = "🤖 BOT OFF"
+botBtn.TextColor3 = Color3.new(1, 1, 1)
+botBtn.Font = Enum.Font.GothamBold
+botBtn.TextSize = 12
+Instance.new("UICorner", botBtn).CornerRadius = UDim.new(0, 6)
+
+botBtn.MouseButton1Click:Connect(function()
+    botProtectionActive = not botProtectionActive
+    botBtn.Text = botProtectionActive and "🤖 BOT ON" or "🤖 BOT OFF"
+    botBtn.BackgroundColor3 = botProtectionActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
+    updateBotProtection(botProtectionActive)
 end)
 
-blueBtn.MouseButton1Click:Connect(function()
-    teamProtection.Blue = not teamProtection.Blue
-    blueBtn.Text = teamProtection.Blue and "🔵 BLUE ON" or "🔵 BLUE OFF"
-    blueBtn.BackgroundColor3 = teamProtection.Blue and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(0, 0, 150)
-    updateTeamProtection("Blue", teamProtection.Blue)
-end)
+local draggingBot = false
+local dragBotStart = nil
+local dragBotStartPos = nil
 
-local draggingTeam = false
-local dragTeamStart = nil
-local dragTeamStartPos = nil
-
-teamFrame.InputBegan:Connect(function(input)
+botFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        draggingTeam = true
-        dragTeamStart = input.Position
-        dragTeamStartPos = teamFrame.Position
+        draggingBot = true
+        dragBotStart = input.Position
+        dragBotStartPos = botFrame.Position
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if draggingTeam and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
-        local delta = input.Position - dragTeamStart
-        teamFrame.Position = UDim2.new(dragTeamStartPos.X.Scale, dragTeamStartPos.X.Offset + delta.X, dragTeamStartPos.Y.Scale, dragTeamStartPos.Y.Offset + delta.Y)
+    if draggingBot and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - dragBotStart
+        botFrame.Position = UDim2.new(dragBotStartPos.X.Scale, dragBotStartPos.X.Offset + delta.X, dragBotStartPos.Y.Scale, dragBotStartPos.Y.Offset + delta.Y)
     end
 end)
 
-teamFrame.InputEnded:Connect(function(input)
+botFrame.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        draggingTeam = false
+        draggingBot = false
     end
 end)
 
-Players.PlayerAdded:Connect(function(player)
-    task.wait(0.5)
-    if teamProtection.Red and player.Team == Enum.Team.Red then
-        protectedPlayers[player] = true
-    elseif teamProtection.Blue and player.Team == Enum.Team.Blue then
-        protectedPlayers[player] = true
+local function onBotAdded(bot)
+    if botProtectionActive then
+        protectedPlayers[bot.Name] = true
     end
-end)
+end
+
+local function onBotRemoved(bot)
+    protectedPlayers[bot.Name] = nil
+end
+
+local activeBots = workspace:FindFirstChild("ActiveBots")
+if activeBots then
+    activeBots.ChildAdded:Connect(onBotAdded)
+    activeBots.ChildRemoved:Connect(onBotRemoved)
+end
 
 print("🔥 SHARP V21 - THE PREDATOR (SMART FREEZE) LOADED")
-print("🛡 Team Protection Panel Loaded (RED/BLUE)")
+print("🤖 Bot Protection Panel Loaded (ActiveBots)")
