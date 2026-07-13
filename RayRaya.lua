@@ -1,5 +1,5 @@
 -- =====================================================
--- SHARP V21 - THE PREDATOR (SMART FREEZE)
+-- SHARP V21 - THE PREDATOR (SMART FREEZE) + TEAM PROTECTION
 -- =====================================================
 
 local Players = game:GetService("Players")
@@ -163,7 +163,7 @@ pBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== لوحة اللاعبين ====================
+-- ==================== لوحة اللاعبين (مع الحماية) ====================
 local playerListGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
 playerListGui.Name = "PlayerListUI"
 playerListGui.ResetOnSpawn = false
@@ -387,6 +387,7 @@ local function isVisible(part)
     return result == nil
 end
 
+-- البحث عن أقرب هدف (حتى لو خلف جدار) للتجميد
 local function findClosestTarget()
     local bestTarget = nil
     local bestDistance = math.huge
@@ -416,6 +417,7 @@ local function findClosestTarget()
     return bestTarget
 end
 
+-- البحث عن هدف مرئي فقط (للحالة العادية)
 local function findVisibleTarget()
     local bestTarget = nil
     local bestDistance = math.huge
@@ -490,111 +492,117 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("🔥 SHARP V21 - THE PREDATOR (SMART FREEZE) LOADED")
-
 -- =====================================================
--- إضافة زرين (أحمر وأزرق) في واجهة اللاعبين
+-- ADDED: TEAM PROTECTION PANEL (RED/BLUE)
 -- =====================================================
 
-local playerFrame = playerListGui:FindFirstChild("PlayerFrame") or playerFrame
+local teamProtection = {
+    Red = false,
+    Blue = false
+}
 
-if playerFrame then
-    local btnFrame = Instance.new("Frame")
-    btnFrame.Size = UDim2.new(0.9, 0, 0, 30)
-    btnFrame.Position = UDim2.new(0.05, 0, 1, -35)
-    btnFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    btnFrame.Parent = playerFrame
-    Instance.new("UICorner", btnFrame).CornerRadius = UDim.new(0, 6)
+local teamGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+teamGui.Name = "TeamProtectionUI"
+teamGui.ResetOnSpawn = false
 
-    local redBtn = Instance.new("TextButton")
-    redBtn.Size = UDim2.new(0.4, 0, 0, 22)
-    redBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
-    redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-    redBtn.Text = "🔴"
-    redBtn.TextColor3 = Color3.new(1, 1, 1)
-    redBtn.Font = Enum.Font.GothamBold
-    redBtn.TextSize = 14
-    redBtn.Parent = btnFrame
-    Instance.new("UICorner", redBtn).CornerRadius = UDim.new(0, 6)
+local teamFrame = Instance.new("Frame", teamGui)
+teamFrame.Size = UDim2.new(0, 180, 0, 80)
+teamFrame.Position = UDim2.new(0.5, -90, 0.5, -40)
+teamFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+teamFrame.BackgroundTransparency = 0.5
+Instance.new("UICorner", teamFrame).CornerRadius = UDim.new(0, 12)
+local teamStroke = Instance.new("UIStroke", teamFrame)
+teamStroke.Thickness = 1
+teamStroke.Color = Color3.fromRGB(100, 100, 100)
 
-    local blueBtn = Instance.new("TextButton")
-    blueBtn.Size = UDim2.new(0.4, 0, 0, 22)
-    blueBtn.Position = UDim2.new(0.55, 0, 0.1, 0)
-    blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-    blueBtn.Text = "🔵"
-    blueBtn.TextColor3 = Color3.new(1, 1, 1)
-    blueBtn.Font = Enum.Font.GothamBold
-    blueBtn.TextSize = 14
-    blueBtn.Parent = btnFrame
-    Instance.new("UICorner", blueBtn).CornerRadius = UDim.new(0, 6)
+local teamTitle = Instance.new("TextLabel", teamFrame)
+teamTitle.Size = UDim2.new(1, 0, 0, 20)
+teamTitle.Text = "🛡 Team Shield"
+teamTitle.TextColor3 = Color3.new(1, 1, 1)
+teamTitle.Font = Enum.Font.GothamBold
+teamTitle.TextSize = 12
+teamTitle.BackgroundTransparency = 1
 
-    local botProtectionMode = "None"
+local redBtn = Instance.new("TextButton", teamFrame)
+redBtn.Size = UDim2.new(0, 70, 0, 30)
+redBtn.Position = UDim2.new(0.05, 0, 0.4, 0)
+redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+redBtn.Text = "🔴 RED OFF"
+redBtn.TextColor3 = Color3.new(1, 1, 1)
+redBtn.Font = Enum.Font.GothamBold
+redBtn.TextSize = 11
+Instance.new("UICorner", redBtn).CornerRadius = UDim.new(0, 6)
 
-    local function getBots()
-        local bots = {}
-        for _, obj in pairs(workspace.ActiveBots:GetChildren()) do
-            if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-                table.insert(bots, obj)
+local blueBtn = Instance.new("TextButton", teamFrame)
+blueBtn.Size = UDim2.new(0, 70, 0, 30)
+blueBtn.Position = UDim2.new(0.5, 5, 0.4, 0)
+blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
+blueBtn.Text = "🔵 BLUE OFF"
+blueBtn.TextColor3 = Color3.new(1, 1, 1)
+blueBtn.Font = Enum.Font.GothamBold
+blueBtn.TextSize = 11
+Instance.new("UICorner", blueBtn).CornerRadius = UDim.new(0, 6)
+
+local function updateTeamProtection(teamColor, enable)
+    local targetTeam = (teamColor == "Red") and Enum.Team.Red or Enum.Team.Blue
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Team == targetTeam then
+            if enable then
+                protectedPlayers[player] = true
+            else
+                protectedPlayers[player] = nil
             end
         end
-        return bots
-    end
-
-    local function getBotColor(bot)
-        if workspace.SpawnProtectionActive:FindFirstChild("Red") and bot:IsDescendantOf(workspace.SpawnProtectionActive.Red) then
-            return "Red"
-        elseif workspace.SpawnProtectionActive:FindFirstChild("Blue") and bot:IsDescendantOf(workspace.SpawnProtectionActive.Blue) then
-            return "Blue"
-        end
-        return "Unknown"
-    end
-
-    redBtn.MouseButton1Click:Connect(function()
-        if botProtectionMode == "Red" then
-            botProtectionMode = "None"
-            redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        else
-            botProtectionMode = "Red"
-            redBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-        end
-    end)
-
-    blueBtn.MouseButton1Click:Connect(function()
-        if botProtectionMode == "Blue" then
-            botProtectionMode = "None"
-            blueBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
-        else
-            botProtectionMode = "Blue"
-            blueBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            redBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        end
-    end)
-
-    local oldFindClosest = findClosestTarget
-    local oldFindVisible = findVisibleTarget
-
-    findClosestTarget = function()
-        local target = oldFindClosest()
-        if target and target.Parent and target.Parent:IsA("Model") then
-            local bot = target.Parent
-            local botColor = getBotColor(bot)
-            if (botProtectionMode == "Red" and botColor == "Red") or (botProtectionMode == "Blue" and botColor == "Blue") then
-                return nil
-            end
-        end
-        return target
-    end
-
-    findVisibleTarget = function()
-        local target = oldFindVisible()
-        if target and target.Parent and target.Parent:IsA("Model") then
-            local bot = target.Parent
-            local botColor = getBotColor(bot)
-            if (botProtectionMode == "Red" and botColor == "Red") or (botProtectionMode == "Blue" and botColor == "Blue") then
-                return nil
-            end
-        end
-        return target
     end
 end
+
+redBtn.MouseButton1Click:Connect(function()
+    teamProtection.Red = not teamProtection.Red
+    redBtn.Text = teamProtection.Red and "🔴 RED ON" or "🔴 RED OFF"
+    redBtn.BackgroundColor3 = teamProtection.Red and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
+    updateTeamProtection("Red", teamProtection.Red)
+end)
+
+blueBtn.MouseButton1Click:Connect(function()
+    teamProtection.Blue = not teamProtection.Blue
+    blueBtn.Text = teamProtection.Blue and "🔵 BLUE ON" or "🔵 BLUE OFF"
+    blueBtn.BackgroundColor3 = teamProtection.Blue and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(0, 0, 150)
+    updateTeamProtection("Blue", teamProtection.Blue)
+end)
+
+local draggingTeam = false
+local dragTeamStart = nil
+local dragTeamStartPos = nil
+
+teamFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        draggingTeam = true
+        dragTeamStart = input.Position
+        dragTeamStartPos = teamFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if draggingTeam and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - dragTeamStart
+        teamFrame.Position = UDim2.new(dragTeamStartPos.X.Scale, dragTeamStartPos.X.Offset + delta.X, dragTeamStartPos.Y.Scale, dragTeamStartPos.Y.Offset + delta.Y)
+    end
+end)
+
+teamFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        draggingTeam = false
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    task.wait(0.5)
+    if teamProtection.Red and player.Team == Enum.Team.Red then
+        protectedPlayers[player] = true
+    elseif teamProtection.Blue and player.Team == Enum.Team.Blue then
+        protectedPlayers[player] = true
+    end
+end)
+
+print("🔥 SHARP V21 - THE PREDATOR (SMART FREEZE) LOADED")
+print("🛡 Team Protection Panel Loaded (RED/BLUE)")
